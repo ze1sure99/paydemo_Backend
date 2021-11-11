@@ -7,9 +7,11 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import io.renren.common.utils.R;
 import io.renren.common.validator.ValidatorUtils;
 import io.renren.modules.app.annotation.Login;
+import io.renren.modules.app.entity.OrderEntity;
 import io.renren.modules.app.entity.UserEntity;
 import io.renren.modules.app.form.PayOrderForm;
 import io.renren.modules.app.form.WxLoginForm;
+import io.renren.modules.app.service.OrderService;
 import io.renren.modules.app.service.UserService;
 import io.renren.modules.app.utils.JwtUtils;
 import io.swagger.annotations.Api;
@@ -35,6 +37,8 @@ public class WxController {
        private String appId;
        @Value("${application.app-secret}")
        private String appSecret;
+       @Autowired
+       private OrderService orderService;
        @Autowired
        private UserService userService;
        @Autowired
@@ -91,13 +95,47 @@ public class WxController {
         }
 
         @Login
-        @PostMapping("/microAppPayOrder")
+        @PostMapping("microAppPayOrder")
         @ApiOperation("小程序付款")
-        //参数 请求头，请求表单json数据
+        //从uniapp前端传过来的orderId,请求头,请求表单json数据
         public R microAppPayOrder(@RequestBody PayOrderForm form, @RequestHeader HashMap header){
             ValidatorUtils.validateEntity(form);
+//            System.out.println(form.getOderId());
+            String token = header.get("token").toString();
+            //通过jwUtils的getClaimByToken（token）.getSubject方法获取用户的userId
+            Long userId = Long.parseLong(jwtUtils.getClaimByToken(token).getSubject());
+            int orderId = form.getOrderId();
+            UserEntity user = new UserEntity();
+            user.setUserId(userId);
+            QueryWrapper wrapper = new QueryWrapper(user);
+            long count = userService.count(wrapper);
+            //说明数据库不存在这样的用户
+            if(count==0){
+                return R.error("用户不存在");
+            }
 
-            return  null;
+            OrderEntity order = new OrderEntity();
+            order.setUserId(userId.intValue());
+            order.setId(orderId);
+            //status =1 代表的是未付款的状态
+            order.setStatus(1);
+            wrapper = new QueryWrapper(order);
+            //查询订单
+            count = orderService.count(wrapper);
+            if(count==0){
+                return  R.error("不是有效的订单");
+            }
+            //验证购物券是否有效
+            //验证团购活动是否有效
+
+            order = new OrderEntity();
+            order.setId(orderId);
+            wrapper = new QueryWrapper(order);
+            //查询订单数据
+            order=orderService.getOne(wrapper);
+            System.out.println(order);
+            //向微信平台发出请求，创建支付订单
+            return  R.ok();
         }
 
 }

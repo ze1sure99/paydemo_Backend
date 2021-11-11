@@ -7,16 +7,17 @@ import lombok.Data;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.util.Date;
 
 @Data
 @TableName("tb_order")
 public class OrderEntity implements Serializable {
     @TableId
-    private  Integer id;
+    private Integer id;
     private String code;
     private Integer userId;
     private BigDecimal amount;
     private Integer paymentType;
     private Integer status;
-    private Data createTime;
+    private Date createTime;
 }
